@@ -1,0 +1,32 @@
+workflows:
+  ios-workflow:
+    name: NEXTO iOS IPA
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install & Build Web
+        script: |
+          npm ci
+          npm run build
+      - name: Add iOS platform
+        script: |
+          npx cap add ios || true
+          npx cap sync ios
+          cd ios/App && pod install || true
+      - name: Build IPA without signing
+        script: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -sdk iphoneos -derivedDataPath build
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -r NEXTO.ipa Payload
+          ls -lh NEXTO.ipa
+    artifacts:
+      - ios/App/NEXTO.ipa
